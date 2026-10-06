@@ -150,10 +150,12 @@ function delU(){if(db.users.length<2)return alert('至少要保留一位使用�
 async function refresh(){
  const codes=new Set(db.users.flatMap(u=>u.stocks.map(s=>s.code)));$('st').textContent='更新中…';let ok=0;
  const put=(c,v)=>{const p=parseFloat(String(v).replace(/,/g,''));if(codes.has(c)&&p>0)db.px[c]={p}};
- const g=async(url,f)=>{try{const a=await (await fetch(url)).json();a.forEach(f);ok++}catch(e){}};
- await Promise.all([g('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',x=>put(x.Code,x.ClosingPrice)),
-  g('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',x=>put(x.SecuritiesCompanyCode,x.Close))]);
- if(ok)db.at=Date.now();save();render();if(!ok)$('st').textContent='無法取得股價，可點「改」手動輸入現價'}
+ const g=async(n,url,f)=>{try{const a=await (await fetch(url,{cache:'no-store'})).json();a.forEach(f);ok++;return n+' ✓'}catch(e){return n+' ✗（'+(e.message||e)+'）'}};
+ const res=await Promise.all([g('證交所','https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',x=>put(x.Code,x.ClosingPrice)),
+  g('櫃買','https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',x=>put(x.SecuritiesCompanyCode,x.Close))]);
+ if(ok)db.at=Date.now();save();render();
+ const miss=[...codes].filter(c=>!db.px[c]);
+ if(res.some(r=>r.includes('✗'))||miss.length)$('st').textContent=res.join(' · ')+(miss.length?' · 查無股價：'+miss.join('、'):'')+'；可點「改」手動輸入'}
 const stale=()=>Date.now()-db.at>18e5;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&stale())refresh()});setInterval(()=>{if(stale())refresh()},6e4);
 async function doExport(){const t=JSON.stringify(db);try{await navigator.clipboard.writeText(t);alert('已複製備份文字，可貼到備忘錄保存')}catch(e){prompt('請全選複製：',t)}}
