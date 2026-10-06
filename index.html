@@ -7,117 +7,159 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="持股">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#fafaf8">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" href="./icon-192.png">
 <style>
-:root{--bg:#fafaf8;--card:#fff;--tx:#1c1c1a;--mu:#8a8a85;--ln:#ececE8;--ac:#1c1c1a;--ac-tx:#fff;
+:root{--bg:#fafaf8;--card:#fff;--tx:#1c1c1a;--mu:#8a8a85;--ln:#ececE8;--ac:#1c1c1a;--at:#fff;--up:#d6403f;--dn:#1f9d55;--al:#fff4e0;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141413;--card:#1d1d1b;--tx:#eeeeea;--mu:#8d8d87;--ln:#2a2a27;--ac:#eeeeea;--ac-tx:#141413}}
-:root[data-theme="dark"]{--bg:#141413;--card:#1d1d1b;--tx:#eeeeea;--mu:#8d8d87;--ln:#2a2a27;--ac:#eeeeea;--ac-tx:#141413}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141413;--card:#1d1d1b;--tx:#eeeeea;--mu:#8d8d87;--ln:#2a2a27;--ac:#eeeeea;--at:#141413;--up:#ff6b6b;--dn:#3ddc84;--al:#3a2f18}}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
-main{max-width:560px;margin:0 auto;padding:28px 18px 60px}
-h1{font-size:20px;font-weight:600;margin:0 0 4px}
-.sub{color:var(--mu);font-size:13px;margin-bottom:22px}
+main{max-width:560px;margin:0 auto;padding:20px 18px 60px}
+.bar,.tabs{display:flex;gap:4px;align-items:center;margin-bottom:10px}
+.bar select{flex:1;font-weight:600;font-size:17px;border:none;background:none;padding:4px 0}
+.tabs button{padding:6px 14px;border-radius:99px;color:var(--mu)}
+.tabs button.on,.chip.on{background:var(--ac);color:var(--at)}
+#chips{display:flex;margin-bottom:10px}#chips select{flex:1}
+.chip{border:1px solid var(--ln);border-radius:99px;padding:3px 12px;font-size:13px}
+.al{background:var(--al);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:14px}
+.sub{color:var(--mu);font-size:13px;margin:6px 2px 14px}
 .card{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:16px;margin-bottom:14px}
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.name{font-size:17px;font-weight:600}
-.meta{color:var(--mu);font-size:13px}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0;padding:12px 0;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln)}
-.stats div span{display:block;color:var(--mu);font-size:12px}
-.stats div b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
-.lot{display:grid;grid-template-columns:48px 1fr 1fr 28px;gap:6px;align-items:center;padding:6px 0;font-variant-numeric:tabular-nums}
-.lot .mu{color:var(--mu)}
-.r{text-align:right}
+.top{display:flex;justify-content:space-between;gap:8px}
+.name{font-size:17px;font-weight:600}.px{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.meta{color:var(--mu);font-size:13px}.lim{margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 8px;margin:12px 0;padding:12px 0;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln)}
+.stats span{display:block;color:var(--mu);font-size:12px}.stats b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.lot{display:grid;grid-template-columns:42px 1fr 1fr 1fr 26px;gap:4px;align-items:center;padding:5px 0;font-size:14px;font-variant-numeric:tabular-nums}
+.mu{color:var(--mu)}.r{text-align:right}.up{color:var(--up)}.dn{color:var(--dn)}
+.row{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.3fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--ln);font-size:14px;font-variant-numeric:tabular-nums}
+.row.h{color:var(--mu);font-size:12px}.row small{display:block;font-size:11px}
+h3{font-size:14px;margin:18px 0 4px;color:var(--mu);font-weight:500}
 button{font:inherit;cursor:pointer;border:none;background:none;color:var(--mu);padding:4px 6px;border-radius:8px}
 button:hover{color:var(--tx)}
-.btn{background:var(--ac);color:var(--ac-tx);padding:9px 16px;border-radius:10px;font-size:14px}
-.btn:hover{color:var(--ac-tx);opacity:.88}
-.ghost{border:1px dashed var(--ln);width:100%;padding:12px;border-radius:12px;color:var(--mu)}
+.btn{background:var(--ac);color:var(--at);padding:9px 16px;border-radius:10px;font-size:14px}.btn:hover{color:var(--at);opacity:.88}
+.ghost{border:1px dashed var(--ln);width:100%;padding:12px;border-radius:12px}
 form{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:10px;padding:8px 10px;min-width:0;flex:1 1 90px}
-input:focus,select:focus{outline:none;border-color:var(--mu)}
+.bar select{border:none}
 .empty{color:var(--mu);text-align:center;padding:30px 0}
-.total{display:flex;justify-content:space-between;color:var(--mu);font-size:13px;margin:0 2px 14px}
 </style>
 </head>
 <body>
 <main>
-  <h1>持股記錄</h1>
-  <div class="sub" id="sub"></div>
-  <div id="list"></div>
-  <div id="addbox"></div>
-  <div style="text-align:center;margin-top:26px;font-size:13px">
-    <button onclick="doExport()">備份（複製）</button> · <button onclick="doImport()">還原（貼上）</button>
-  </div>
+<div class="bar"><select id="u" onchange="db.cur=+this.value;bf='';save();render()"></select>
+<button onclick="addU()">＋</button><button onclick="renU()">改名</button><button onclick="delU()">刪除</button></div>
+<div id="chips"></div>
+<div class="tabs"><button id="t0" onclick="tab=0;render()">持股</button><button id="t1" onclick="tab=1;render()">分析</button>
+<button onclick="refresh()" style="margin-left:auto">↻ 股價</button></div>
+<div class="meta" id="st" style="margin:-4px 0 10px"></div>
+<div id="alerts"></div><div id="view"></div>
+<datalist id="bl"></datalist>
+<div style="text-align:center;margin-top:26px;font-size:13px">
+<button onclick="doExport()">備份（複製）</button> · <button onclick="doImport()">還原（貼上）</button></div>
 </main>
 <script>
-const KEY='stocklog.v1';
-const seed=[{id:1,code:'5289',name:'宜鼎',year:'115',div:'年配',lots:[
- {id:11,date:'0828',price:1480,qty:20},{id:12,date:'0903',price:1415,qty:20}]}];
-let data=load(), openLot=null, showAdd=false;
-function load(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return seed}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
+const K='stocklog.v2',BR=['國泰','華南','元大','富邦','凱基','永豐','玉山'];
+const seed=()=>({cur:1,fee:{on:0,d:6},px:{},at:0,users:[{id:1,name:'我',stocks:[{id:1,code:'5289',name:'宜鼎',year:'115',div:'年配',sell:0,stop:0,man:0,lots:[{id:11,date:'0828',price:1480,qty:20,br:''},{id:12,date:'0903',price:1415,qty:20,br:''}]}]}]});
+const fixS=a=>a.map(x=>({sell:0,stop:0,man:0,...x,lots:x.lots.map(l=>({br:'',...l}))}));
+function load(){try{let s=localStorage.getItem(K);if(s)return JSON.parse(s);s=localStorage.getItem('stocklog.v1');
+ if(s){const o=seed();o.users[0].stocks=fixS(JSON.parse(s));return o}}catch(e){}return seed()}
+let db=load(),tab=0,bf='',BSL=[],openLot=null,showAdd=false,lastBr='';
+const $=id=>document.getElementById(id),U=()=>db.users.find(u=>u.id===db.cur)||db.users[0];
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmt=n=>Math.round(n).toLocaleString('en-US');
-const fmt2=n=>(Math.round(n*100)/100).toLocaleString('en-US');
-const uid=()=>Date.now()+Math.floor(Math.random()*1000);
+const fmt=n=>Math.round(n).toLocaleString('en-US'),f2=n=>(Math.round(n*100)/100).toLocaleString('en-US');
+const sg=n=>(n>0?'+':'')+fmt(n),sp=n=>(n>0?'+':'')+n.toFixed(2)+'%',cl=n=>n>0?'up':n<0?'dn':'';
+const uid=()=>Date.now()+Math.floor(Math.random()*1e3),lb=l=>l.br||'未指定',fl=s=>bf?s.lots.filter(l=>lb(l)===bf):s.lots;
+const price=s=>s.man>0?s.man:(db.px[s.code]?.p||0);
+function calc(L,code,p){const qty=L.reduce((a,l)=>a+l.qty,0),cost=L.reduce((a,l)=>a+l.qty*l.price,0),mv=qty*p;let pl=mv-cost;
+ if(db.fee.on){const r=.001425*db.fee.d/10,t=code.startsWith('00')?.001:.003;pl=mv*(1-r-t)-cost*(1+r)}
+ return{qty,cost,mv,pl,pct:cost?pl/cost*100:0,has:p>0}}
+const add=(T,c)=>{T.cost+=c.cost;if(c.has){T.mv+=c.mv;T.pl+=c.pl;T.pc+=c.cost}};
+const lotForm=(sid,extra)=>`<input name="date" placeholder="日期 0828" inputmode="numeric" maxlength="4" required>
+<input name="price" placeholder="價格" inputmode="decimal" required><input name="qty" placeholder="股數" inputmode="numeric" required>
+<input name="br" list="bl" placeholder="券商" value="${esc(lastBr)}">`;
 
 function render(){
-  let all=0;
-  document.getElementById('list').innerHTML=data.length?data.map(s=>{
-    const qty=s.lots.reduce((a,l)=>a+l.qty,0), cost=s.lots.reduce((a,l)=>a+l.qty*l.price,0);
-    all+=cost;
-    return `<div class="card">
-      <div class="top"><div><div class="name">${esc(s.code)} ${esc(s.name)}</div>
-      <div class="meta">${esc(s.year)} 年 · ${esc(s.div)}</div></div>
-      <button onclick="delStock(${s.id})" title="刪除股票">刪除</button></div>
-      <div class="stats">
-        <div><span>股數</span><b>${fmt(qty)}</b></div>
-        <div><span>均價</span><b>${qty?fmt2(cost/qty):'-'}</b></div>
-        <div><span>總成本</span><b>${fmt(cost)}</b></div>
-      </div>
-      ${s.lots.map(l=>`<div class="lot"><span class="mu">${esc(l.date)}</span>
-        <span>${fmt2(l.price)}</span><span class="r">${fmt(l.qty)} 股</span>
-        <button onclick="delLot(${s.id},${l.id})" title="刪除">×</button></div>`).join('')}
-      ${openLot===s.id?`<form onsubmit="return addLot(event,${s.id})">
-        <input name="date" placeholder="日期 0828" inputmode="numeric" maxlength="4" required>
-        <input name="price" placeholder="價格" inputmode="decimal" required>
-        <input name="qty" placeholder="股數" inputmode="numeric" required>
-        <button class="btn">加入</button></form>`
-      :`<button onclick="openLot=${s.id};render()" style="margin-top:6px">+ 新增買進</button>`}
-    </div>`}).join(''):'<div class="empty">還沒有記錄</div>';
-  document.getElementById('sub').textContent=data.length?`共 ${data.length} 檔 · 總成本 ${fmt(all)}`:'';
-  document.getElementById('addbox').innerHTML=showAdd?`<div class="card"><form onsubmit="return addStock(event)" style="margin:0">
-    <input name="code" placeholder="股票號碼" inputmode="numeric" required>
-    <input name="name" placeholder="公司" required>
-    <input name="year" placeholder="年度 115" inputmode="numeric" required>
-    <select name="div"><option>年配</option><option>半年配</option><option>季配</option><option>月配</option><option>不配息</option></select>
-    <input name="date" placeholder="日期 0828" inputmode="numeric" maxlength="4" required>
-    <input name="price" placeholder="價格" inputmode="decimal" required>
-    <input name="qty" placeholder="股數" inputmode="numeric" required>
-    <button class="btn">新增</button><button type="button" onclick="showAdd=false;render()">取消</button></form></div>`
-    :`<button class="ghost" onclick="showAdd=true;render()">+ 新增股票</button>`;
+ const u=U();db.cur=u.id;
+ $('u').innerHTML=db.users.map(x=>`<option value="${x.id}"${x.id===u.id?' selected':''}>${esc(x.name)}</option>`).join('');
+ $('t0').className=tab?'':'on';$('t1').className=tab?'on':'';
+ const bs=[...new Set(u.stocks.flatMap(s=>s.lots.map(lb)))];
+ if(bf&&!bs.includes(bf))bf='';BSL=['',...bs];
+ $('chips').innerHTML=`<select onchange="bf=BSL[this.value];render()">${BSL.map((b,i)=>`<option value="${i}"${b===bf?' selected':''}>${b?esc(b):'所有券商'}</option>`).join('')}</select>`;
+ $('bl').innerHTML=[...new Set([...BR,...bs.filter(x=>x!=='未指定')])].map(b=>`<option value="${esc(b)}">`).join('');
+ $('st').textContent=db.at?'股價更新 '+new Date(db.at).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（最近收盤價）':'尚未更新股價';
+ const al=[];u.stocks.forEach(s=>{const p=price(s);if(!p)return;
+  if(s.sell>0&&p>=s.sell)al.push(`🔔 ${esc(s.name)} 現價 ${f2(p)} 已達賣出限價 ${f2(s.sell)}`);
+  if(s.stop>0&&p<=s.stop)al.push(`⚠️ ${esc(s.name)} 現價 ${f2(p)} 已跌破停損價 ${f2(s.stop)}`)});
+ $('alerts').innerHTML=al.map(a=>`<div class="al">${a}</div>`).join('');
+ $('view').innerHTML=tab?ana(u):hold(u);
 }
-function addLot(e,id){e.preventDefault();const f=new FormData(e.target);
-  data.find(s=>s.id===id).lots.push({id:uid(),date:f.get('date'),price:+f.get('price'),qty:+f.get('qty')});
-  openLot=null;save();render();return false}
-function addStock(e){e.preventDefault();const f=new FormData(e.target);
-  data.push({id:uid(),code:f.get('code'),name:f.get('name'),year:f.get('year'),div:f.get('div'),
-  lots:[{id:uid(),date:f.get('date'),price:+f.get('price'),qty:+f.get('qty')}]});
-  showAdd=false;save();render();return false}
-function delLot(sid,lid){if(!confirm('刪除這筆買進？'))return;const s=data.find(x=>x.id===sid);s.lots=s.lots.filter(l=>l.id!==lid);save();render()}
-function delStock(id){if(!confirm('刪除這檔股票與全部記錄？'))return;data=data.filter(s=>s.id!==id);save();render()}
-async function doExport(){const t=JSON.stringify(data);
-  try{await navigator.clipboard.writeText(t);alert('已複製備份文字，可貼到備忘錄保存')}
-  catch(e){prompt('請全選複製這段備份文字：',t)}}
+function hold(u){
+ let tc=0,tp=0,n=0,pc=0;
+ const cards=u.stocks.map(s=>{const L=fl(s);if(!L.length)return'';n++;const p=price(s),c=calc(L,s.code,p);tc+=c.cost;if(c.has){tp+=c.pl;pc+=c.cost}
+  return `<div class="card"><div class="top"><div><div class="name">${esc(s.code)} ${esc(s.name)}</div><div class="meta">${esc(s.year)} 年 · ${esc(s.div)}</div></div>
+  <div class="r"><div class="px">${p?f2(p):'--'}</div><div class="meta">${s.man>0?'手動':'收盤'}<button onclick="setPx(${s.id})">改</button></div></div></div>
+  <div class="meta lim">賣出限價 ${s.sell>0?f2(s.sell):'未設'} · 停損 ${s.stop>0?f2(s.stop):'未設'}<button onclick="setLim(${s.id})">設定</button></div>
+  <div class="stats"><div><span>股數</span><b>${fmt(c.qty)}</b></div><div><span>均價</span><b>${c.qty?f2(c.cost/c.qty):'-'}</b></div><div><span>成本</span><b>${fmt(c.cost)}</b></div>
+  <div><span>市值</span><b>${c.has?fmt(c.mv):'-'}</b></div><div><span>損益</span><b class="${cl(c.pl)}">${c.has?sg(c.pl):'-'}</b></div><div><span>報酬</span><b class="${cl(c.pl)}">${c.has?sp(c.pct):'-'}</b></div></div>
+  ${L.map(l=>`<div class="lot"><span class="mu">${esc(l.date)}</span><span class="mu">${esc(lb(l))}</span><span>${f2(l.price)}</span><span class="r">${fmt(l.qty)} 股</span><button onclick="delLot(${s.id},${l.id})">×</button></div>`).join('')}
+  ${openLot===s.id?`<form onsubmit="return addLot(event,${s.id})">${lotForm()}<button class="btn">加入</button></form>`:`<button onclick="openLot=${s.id};render()" style="margin-top:6px">+ 新增買進</button>`}
+  <button onclick="delStock(${s.id})" style="float:right;margin-top:-26px">刪除股票</button></div>`}).join('');
+ const sub=n?`<div class="sub">共 ${n} 檔 · 成本 ${fmt(tc)} · 損益 <span class="${cl(tp)}">${pc?sg(tp)+'（'+sp(tp/pc*100)+'）':'-'}</span></div>`:'';
+ return sub+(cards||'<div class="empty">還沒有記錄</div>')+(showAdd?`<div class="card"><form onsubmit="return addStock(event)" style="margin:0">
+  <input name="code" placeholder="股票號碼" inputmode="numeric" required><input name="name" placeholder="公司" required>
+  <input name="year" placeholder="年度 115" inputmode="numeric" required><select name="div"><option>年配</option><option>半年配</option><option>季配</option><option>月配</option><option>不配息</option></select>
+  ${lotForm()}<button class="btn">新增</button><button type="button" onclick="showAdd=false;render()">取消</button></form></div>`
+  :`<button class="ghost" onclick="showAdd=true;render()">+ 新增股票</button>`);
+}
+function ana(u){
+ const T={cost:0,mv:0,pl:0,pc:0},byB={},rows=[];
+ u.stocks.forEach(s=>{const L=fl(s);if(!L.length)return;const p=price(s),c=calc(L,s.code,p);add(T,c);rows.push([s.name,c]);
+  const g={};L.forEach(l=>(g[lb(l)]=g[lb(l)]||[]).push(l));
+  for(const b in g){byB[b]=byB[b]||{cost:0,mv:0,pl:0,pc:0};add(byB[b],calc(g[b],s.code,p))}});
+ const row=(n,x)=>`<div class="row"><span>${esc(n)}</span><span class="r">${fmt(x.cost)}</span><span class="r">${x.mv?fmt(x.mv):'-'}</span><span class="r ${cl(x.pl)}">${x.pc?sg(x.pl)+'<small>'+sp(x.pl/x.pc*100)+'</small>':'-'}</span></div>`;
+ const hd='<div class="row h"><span></span><span class="r">成本</span><span class="r">市值</span><span class="r">損益</span></div>';
+ return `<div class="card"><div class="meta">總損益${db.fee.on?'（已扣預估費用）':''}</div>
+  <div class="px ${cl(T.pl)}" style="font-size:28px">${T.pc?sg(T.pl):'-'}</div><div class="meta ${cl(T.pl)}">${T.pc?sp(T.pl/T.pc*100):''}</div>
+  <div class="stats" style="grid-template-columns:1fr 1fr;border-bottom:none;margin-bottom:0"><div><span>總成本</span><b>${fmt(T.cost)}</b></div><div><span>總市值</span><b>${T.mv?fmt(T.mv):'-'}</b></div></div></div>
+  <h3>依股票</h3>${hd}${rows.map(r=>row(r[0],r[1])).join('')||'<div class="empty">無資料</div>'}
+  <h3>依券商</h3>${hd}${Object.keys(byB).map(b=>row(b,byB[b])).join('')}
+  <h3>設定</h3><form style="align-items:center"><label style="flex:1 1 100%;font-size:14px"><input type="checkbox" style="flex:none" ${db.fee.on?'checked':''} onchange="db.fee.on=this.checked?1:0;save();render()"> 扣除預估手續費＋證交稅（買賣各 0.1425%；賣出稅 0.3%，ETF 0.1%）</label>
+  <span class="meta">手續費</span><input type="number" step="0.1" min="0.1" max="10" value="${db.fee.d}" style="flex:0 0 80px" onchange="db.fee.d=+this.value||10;save();render()"><span class="meta">折</span></form>
+  <div class="sub">股價為證交所／櫃買最近收盤價，非即時；未含最低手續費 20 元與股利。</div>`;
+}
+function addLot(e,id){e.preventDefault();const f=new FormData(e.target);lastBr=f.get('br').trim();
+ U().stocks.find(s=>s.id===id).lots.push({id:uid(),date:f.get('date'),price:+f.get('price'),qty:+f.get('qty'),br:lastBr});openLot=null;save();render();return false}
+function addStock(e){e.preventDefault();const f=new FormData(e.target);lastBr=f.get('br').trim();
+ U().stocks.push({id:uid(),code:f.get('code').trim(),name:f.get('name'),year:f.get('year'),div:f.get('div'),sell:0,stop:0,man:0,
+ lots:[{id:uid(),date:f.get('date'),price:+f.get('price'),qty:+f.get('qty'),br:lastBr}]});showAdd=false;save();render();refresh();return false}
+const gs=id=>U().stocks.find(s=>s.id===id);
+function delLot(sid,lid){if(!confirm('刪除這筆買進？'))return;const s=gs(sid);s.lots=s.lots.filter(l=>l.id!==lid);save();render()}
+function delStock(id){if(!confirm('刪除這檔股票與全部記錄？'))return;U().stocks=U().stocks.filter(s=>s.id!==id);save();render()}
+function setPx(id){const s=gs(id),v=prompt('輸入現價（0 = 改回自動收盤價）',s.man||price(s));if(v===null)return;s.man=+v||0;save();render()}
+function setLim(id){const s=gs(id);let a=prompt('賣出限價（到價提醒，0 = 不設）',s.sell||0);if(a===null)return;
+ let b=prompt('停損價（跌破提醒，0 = 不設）',s.stop||0);if(b===null)return;s.sell=+a||0;s.stop=+b||0;save();render()}
+function addU(){const n=prompt('新使用者名稱');if(!n)return;const id=uid();db.users.push({id,name:n,stocks:[]});db.cur=id;bf='';save();render()}
+function renU(){const n=prompt('改名',U().name);if(!n)return;U().name=n;save();render()}
+function delU(){if(db.users.length<2)return alert('至少要保留一位使用者');if(!confirm('刪除「'+U().name+'」與其全部記錄？'))return;
+ db.users=db.users.filter(x=>x.id!==db.cur);db.cur=db.users[0].id;bf='';save();render()}
+async function refresh(){
+ const codes=new Set(db.users.flatMap(u=>u.stocks.map(s=>s.code)));$('st').textContent='更新中…';let ok=0;
+ const put=(c,v)=>{const p=parseFloat(String(v).replace(/,/g,''));if(codes.has(c)&&p>0)db.px[c]={p}};
+ const g=async(url,f)=>{try{const a=await (await fetch(url)).json();a.forEach(f);ok++}catch(e){}};
+ await Promise.all([g('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',x=>put(x.Code,x.ClosingPrice)),
+  g('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',x=>put(x.SecuritiesCompanyCode,x.Close))]);
+ if(ok)db.at=Date.now();save();render();if(!ok)$('st').textContent='無法取得股價，可點「改」手動輸入現價'}
+const stale=()=>Date.now()-db.at>18e5;
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&stale())refresh()});setInterval(()=>{if(stale())refresh()},6e4);
+async function doExport(){const t=JSON.stringify(db);try{await navigator.clipboard.writeText(t);alert('已複製備份文字，可貼到備忘錄保存')}catch(e){prompt('請全選複製：',t)}}
 function doImport(){const t=prompt('貼上備份文字（會覆蓋目前資料）：');if(!t)return;
-  try{const d=JSON.parse(t);if(!Array.isArray(d))throw 0;data=d;save();render()}catch(e){alert('格式不正確')}}
-render();
+ try{const d=JSON.parse(t);if(Array.isArray(d)){U().stocks=fixS(d)}else if(d.users){db=d}else throw 0;save();render()}catch(e){alert('格式不正確')}}
+render();if(stale())refresh();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
 </script>
 </body>
