@@ -54,7 +54,7 @@ input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid 
 <button onclick="addU()">＋</button><button onclick="renU()">改名</button><button onclick="delU()">刪除</button></div>
 <div id="chips"></div>
 <div class="tabs"><button id="t0" onclick="tab=0;render()">持股</button><button id="t1" onclick="tab=1;render()">分析</button>
-<button onclick="refresh()" style="margin-left:auto">↻ 股價</button></div>
+<button onclick="setProxy()" style="margin-left:auto">⚙</button><button onclick="refresh()">↻ 股價</button></div>
 <div class="meta" id="st" style="margin:-4px 0 10px"></div>
 <div id="alerts"></div><div id="view"></div>
 <datalist id="bl"></datalist>
@@ -74,6 +74,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const fmt=n=>Math.round(n).toLocaleString('en-US'),f2=n=>(Math.round(n*100)/100).toLocaleString('en-US');
 const sg=n=>(n>0?'+':'')+fmt(n),sp=n=>(n>0?'+':'')+n.toFixed(2)+'%',cl=n=>n>0?'up':n<0?'dn':'';
 const uid=()=>Date.now()+Math.floor(Math.random()*1e3),lb=l=>l.br||'未指定',fl=s=>bf?s.lots.filter(l=>lb(l)===bf):s.lots;
+const chg=s=>{const x=db.px[s.code];if(!x||!x.y||s.man>0)return'';const d=price(s)-x.y;return `<div class="meta ${cl(d)}">${d>0?'+':''}${f2(d)} (${sp(d/x.y*100)})</div>`};
 const price=s=>s.man>0?s.man:(db.px[s.code]?.p||0);
 function calc(L,code,p){const qty=L.reduce((a,l)=>a+l.qty,0),cost=L.reduce((a,l)=>a+l.qty*l.price,0),mv=qty*p;let pl=mv-cost;
  if(db.fee.on){const r=.001425*db.fee.d/10,t=code.startsWith('00')?.001:.003;pl=mv*(1-r-t)-cost*(1+r)}
@@ -91,7 +92,7 @@ function render(){
  if(bf&&!bs.includes(bf))bf='';BSL=['',...bs];
  $('chips').innerHTML=`<select onchange="bf=BSL[this.value];render()">${BSL.map((b,i)=>`<option value="${i}"${b===bf?' selected':''}>${b?esc(b):'所有券商'}</option>`).join('')}</select>`;
  $('bl').innerHTML=[...new Set([...BR,...bs.filter(x=>x!=='未指定')])].map(b=>`<option value="${esc(b)}">`).join('');
- $('st').textContent=db.at?'股價更新 '+new Date(db.at).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（最近收盤價）':'尚未更新股價';
+ $('st').textContent=db.at?'股價更新 '+new Date(db.at).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（'+(db.live?'最新':'最近收盤價')+'）':'尚未更新股價';
  const al=[];u.stocks.forEach(s=>{const p=price(s);if(!p)return;
   if(s.sell>0&&p>=s.sell)al.push(`🔔 ${esc(s.name)} 現價 ${f2(p)} 已達賣出限價 ${f2(s.sell)}`);
   if(s.stop>0&&p<=s.stop)al.push(`⚠️ ${esc(s.name)} 現價 ${f2(p)} 已跌破停損價 ${f2(s.stop)}`)});
@@ -102,7 +103,7 @@ function hold(u){
  let tc=0,tp=0,n=0,pc=0;
  const cards=u.stocks.map(s=>{const L=fl(s);if(!L.length)return'';n++;const p=price(s),c=calc(L,s.code,p);tc+=c.cost;if(c.has){tp+=c.pl;pc+=c.cost}
   return `<div class="card"><div class="top"><div><div class="name">${esc(s.code)} ${esc(s.name)}</div><div class="meta">${esc(s.year)} 年 · ${esc(s.div)}</div></div>
-  <div class="r"><div class="px">${p?f2(p):'--'}</div><div class="meta">${s.man>0?'手動':'收盤'}<button onclick="setPx(${s.id})">改</button></div></div></div>
+  <div class="r"><div class="px">${p?f2(p):'--'}</div><div class="meta">${chg(s)}${s.man>0?'手動':(db.px[s.code]?.rt?'最新':'收盤')}<button onclick="setPx(${s.id})">改</button></div></div></div>
   <div class="meta lim">賣出限價 ${s.sell>0?f2(s.sell):'未設'} · 停損 ${s.stop>0?f2(s.stop):'未設'}<button onclick="setLim(${s.id})">設定</button></div>
   <div class="stats"><div><span>股數</span><b>${fmt(c.qty)}</b></div><div><span>均價</span><b>${c.qty?f2(c.cost/c.qty):'-'}</b></div><div><span>成本</span><b>${fmt(c.cost)}</b></div>
   <div><span>市值</span><b>${c.has?fmt(c.mv):'-'}</b></div><div><span>損益</span><b class="${cl(c.pl)}">${c.has?sg(c.pl):'-'}</b></div><div><span>報酬</span><b class="${cl(c.pl)}">${c.has?sp(c.pct):'-'}</b></div></div>
@@ -130,7 +131,7 @@ function ana(u){
   <h3>依券商</h3>${hd}${Object.keys(byB).map(b=>row(b,byB[b])).join('')}
   <h3>設定</h3><form style="align-items:center"><label style="flex:1 1 100%;font-size:14px"><input type="checkbox" style="flex:none" ${db.fee.on?'checked':''} onchange="db.fee.on=this.checked?1:0;save();render()"> 扣除預估手續費＋證交稅（買賣各 0.1425%；賣出稅 0.3%，ETF 0.1%）</label>
   <span class="meta">手續費</span><input type="number" step="0.1" min="0.1" max="10" value="${db.fee.d}" style="flex:0 0 80px" onchange="db.fee.d=+this.value||10;save();render()"><span class="meta">折</span></form>
-  <div class="sub">股價為證交所／櫃買最近收盤價，非即時；未含最低手續費 20 元與股利。</div>`;
+  <div class="sub">股價：設定 ⚙ 中繼站後盤中自動更新，否則為最近收盤價；未含最低手續費 20 元與股利。</div>`;
 }
 function addLot(e,id){e.preventDefault();const f=new FormData(e.target);lastBr=f.get('br').trim();
  U().stocks.find(s=>s.id===id).lots.push({id:uid(),date:f.get('date'),price:+f.get('price'),qty:+f.get('qty'),br:lastBr});openLot=null;save();render();return false}
@@ -149,6 +150,11 @@ function delU(){if(db.users.length<2)return alert('至少要保留一位使用�
  db.users=db.users.filter(x=>x.id!==db.cur);db.cur=db.users[0].id;bf='';save();render()}
 async function refresh(){
  const codes=new Set(db.users.flatMap(u=>u.stocks.map(s=>s.code)));$('st').textContent='更新中…';let ok=0;
+ if(db.proxy){try{const j=await (await fetch(db.proxy+(db.proxy.includes('?')?'&':'?')+'codes='+[...codes].join(','),{cache:'no-store'})).json();
+  let rt=0;for(const c in j){db.px[c]={p:j[c].p,y:j[c].y,rt:j[c].rt};if(j[c].rt)rt++}
+  db.at=Date.now();db.live=rt>0;save();render();const ms=[...codes].filter(c=>!j[c]);
+  if(ms.length)$('st').textContent+=' · 查無股價：'+ms.join('、');return}
+  catch(e){render();$('st').textContent='中繼站連線失敗（'+(e.message||e)+'），請檢查 ⚙ 網址';return}}
  const put=(c,v)=>{const p=parseFloat(String(v).replace(/,/g,''));if(codes.has(c)&&p>0)db.px[c]={p}};
  const g=async(n,url,f)=>{try{const a=await (await fetch(url,{cache:'no-store'})).json();a.forEach(f);ok++;return n+' ✓'}catch(e){return n+' ✗（'+(e.message||e)+'）'}};
  const res=await Promise.all([g('證交所','https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',x=>put(x.Code,x.ClosingPrice)),
@@ -156,7 +162,9 @@ async function refresh(){
  if(ok)db.at=Date.now();save();render();
  const miss=[...codes].filter(c=>!db.px[c]);
  if(res.some(r=>r.includes('✗'))||miss.length)$('st').textContent=res.join(' · ')+(miss.length?' · 查無股價：'+miss.join('、'):'')+'；可點「改」手動輸入'}
-const stale=()=>Date.now()-db.at>18e5;
+const mkt=()=>{const t=new Date(Date.now()+(new Date().getTimezoneOffset()+480)*6e4),m=t.getHours()*60+t.getMinutes(),d=t.getDay();return d>0&&d<6&&m>=540&&m<=810};
+const stale=()=>Date.now()-db.at>(db.proxy&&mkt()?55e3:18e5);
+function setProxy(){const v=prompt('價格中繼站網址（Cloudflare Worker；留空 = 不使用）',db.proxy||'');if(v===null)return;db.proxy=v.trim();save();refresh()}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&stale())refresh()});setInterval(()=>{if(stale())refresh()},6e4);
 async function doExport(){const t=JSON.stringify(db);try{await navigator.clipboard.writeText(t);alert('已複製備份文字，可貼到備忘錄保存')}catch(e){prompt('請全選複製：',t)}}
 function doImport(){const t=prompt('貼上備份文字（會覆蓋目前資料）：');if(!t)return;
