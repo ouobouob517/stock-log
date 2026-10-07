@@ -128,7 +128,7 @@ function hold(u){
 }
 function ana(u){
  const T={cost:0,mv:0,pl:0,pc:0},byB={},rows=[];
- u.stocks.forEach(s=>{const L=fl(s);if(!L.length||!match(s))return;const p=price(s),c=calc(L,s.code,p);add(T,c);rows.push([s.name,c]);
+ u.stocks.forEach(s=>{const L=fl(s);if(!L.length||!match(s))return;const p=price(s),c=calc(L,s.code,p);add(T,c);rows.push([s.name,{...c,pc:c.has?c.cost:0,pl:c.has?c.pl:0}]);
   const g={};L.forEach(l=>(g[lb(l)]=g[lb(l)]||[]).push(l));
   for(const b in g){byB[b]=byB[b]||{cost:0,mv:0,pl:0,pc:0};add(byB[b],calc(g[b],s.code,p))}});
  const row=(n,x)=>`<div class="row"><span>${esc(n)}</span><span class="r">${fmt(x.cost)}</span><span class="r">${x.mv?fmt(x.mv):'-'}</span><span class="r ${cl(x.pl)}">${x.pc?sg(x.pl)+'<small>'+sp(x.pl/x.pc*100)+'</small>':'-'}</span></div>`;
