@@ -54,7 +54,7 @@ input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid 
 <button onclick="addU()">＋</button><button onclick="renU()">改名</button><button onclick="delU()">刪除</button></div>
 <div id="chips"></div>
 <div class="tabs"><button id="t0" onclick="tab=0;render()">持股</button><button id="t1" onclick="tab=1;render()">分析</button>
-<button onclick="setProxy()" style="margin-left:auto">⚙</button><button onclick="refresh()">↻ 股價</button></div>
+<button onclick="setProxy()" style="margin-left:auto">⚙</button><button onclick="askNote()">🔔</button><button onclick="refresh()">↻ 股價</button></div>
 <div class="meta" id="st" style="margin:-4px 0 10px"></div>
 <div id="alerts"></div><div id="view"></div>
 <datalist id="bl"></datalist>
@@ -63,8 +63,8 @@ input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid 
 </main>
 <script>
 const K='stocklog.v2',BR=['國泰','華南','元大','富邦','凱基','永豐','玉山'];
-const seed=()=>({cur:1,fee:{on:0,d:6},px:{},at:0,users:[{id:1,name:'我',stocks:[{id:1,code:'5289',name:'宜鼎',year:'115',div:'年配',sell:0,stop:0,man:0,lots:[{id:11,date:'0828',price:1480,qty:20,br:''},{id:12,date:'0903',price:1415,qty:20,br:''}]}]}]});
-const fixS=a=>a.map(x=>({sell:0,stop:0,man:0,...x,lots:x.lots.map(l=>({br:'',...l}))}));
+const seed=()=>({cur:1,fee:{on:0,d:6},px:{},at:0,users:[{id:1,name:'我',stocks:[{id:1,code:'5289',name:'宜鼎',year:'115',div:'年配',sell:0,stop:0,low:0,man:0,lots:[{id:11,date:'0828',price:1480,qty:20,br:''},{id:12,date:'0903',price:1415,qty:20,br:''}]}]}]});
+const fixS=a=>a.map(x=>({sell:0,stop:0,low:0,man:0,...x,lots:x.lots.map(l=>({br:'',...l}))}));
 function load(){try{let s=localStorage.getItem(K);if(s)return JSON.parse(s);s=localStorage.getItem('stocklog.v1');
  if(s){const o=seed();o.users[0].stocks=fixS(JSON.parse(s));return o}}catch(e){}return seed()}
 let db=load(),tab=0,bf='',BSL=[],openLot=null,showAdd=false,lastBr='';
@@ -84,6 +84,17 @@ const lotForm=(sid,extra)=>`<input name="date" placeholder="日期 0828" inputmo
 <input name="price" placeholder="價格" inputmode="decimal" required><input name="qty" placeholder="股數" inputmode="numeric" required>
 <input name="br" list="bl" placeholder="券商" value="${esc(lastBr)}">`;
 
+function alerts(u){const r=[];u.stocks.forEach(s=>{const p=price(s);if(!p)return;const k=t=>s.id+':'+t;
+ if(s.sell>0&&p>=s.sell)r.push([k('s'+s.sell),`🔔 ${esc(s.name)} 現價 ${f2(p)} 已達賣出限價 ${f2(s.sell)}`]);
+ if(s.stop>0&&p<=s.stop)r.push([k('x'+s.stop),`⚠️ ${esc(s.name)} 現價 ${f2(p)} 已跌破停損價 ${f2(s.stop)}`]);
+ if(s.low>0&&p<=s.low)r.push([k('l'+s.low),`📉 ${esc(s.name)} 現價 ${f2(p)} 已跌到低點提醒價 ${f2(s.low)}`])});return r}
+function notify(list){if(!('Notification' in window)||Notification.permission!=='granted')return;db.nt=db.nt||{};const d=new Date().toDateString();let ch=0;
+ list.forEach(([k,t])=>{if(db.nt[k]===d)return;db.nt[k]=d;ch=1;
+  const o={body:t,icon:'./icon-192.png'};
+  (navigator.serviceWorker?navigator.serviceWorker.ready.then(r=>r.showNotification('持股提醒',o)):Promise.reject()).catch(()=>{try{new Notification('持股提醒',o)}catch(e){}})});
+ if(ch)save()}
+function askNote(){if(!('Notification' in window))return alert('這個瀏覽器不支援通知');
+ Notification.requestPermission().then(p=>alert(p==='granted'?'已開啟：app 開著時，到價會跳出通知（同一提醒每天一次）':'未允許通知，請到手機設定開啟'))}
 function render(){
  const u=U();db.cur=u.id;
  $('u').innerHTML=db.users.map(x=>`<option value="${x.id}"${x.id===u.id?' selected':''}>${esc(x.name)}</option>`).join('');
@@ -93,10 +104,7 @@ function render(){
  $('chips').innerHTML=`<select onchange="bf=BSL[this.value];render()">${BSL.map((b,i)=>`<option value="${i}"${b===bf?' selected':''}>${b?esc(b):'所有券商'}</option>`).join('')}</select>`;
  $('bl').innerHTML=[...new Set([...BR,...bs.filter(x=>x!=='未指定')])].map(b=>`<option value="${esc(b)}">`).join('');
  $('st').textContent=db.at?'股價更新 '+new Date(db.at).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（'+(db.live?'最新':'最近收盤價')+'）':'尚未更新股價';
- const al=[];u.stocks.forEach(s=>{const p=price(s);if(!p)return;
-  if(s.sell>0&&p>=s.sell)al.push(`🔔 ${esc(s.name)} 現價 ${f2(p)} 已達賣出限價 ${f2(s.sell)}`);
-  if(s.stop>0&&p<=s.stop)al.push(`⚠️ ${esc(s.name)} 現價 ${f2(p)} 已跌破停損價 ${f2(s.stop)}`)});
- $('alerts').innerHTML=al.map(a=>`<div class="al">${a}</div>`).join('');
+ $('alerts').innerHTML=alerts(u).map(a=>`<div class="al">${a[1]}</div>`).join('');notify(db.users.flatMap(alerts));
  $('view').innerHTML=tab?ana(u):hold(u);
 }
 function hold(u){
@@ -104,7 +112,7 @@ function hold(u){
  const cards=u.stocks.map(s=>{const L=fl(s);if(!L.length)return'';n++;const p=price(s),c=calc(L,s.code,p);tc+=c.cost;if(c.has){tp+=c.pl;pc+=c.cost}
   return `<div class="card"><div class="top"><div><div class="name">${esc(s.code)} ${esc(s.name)}</div><div class="meta">${esc(s.year)} 年 · ${esc(s.div)}</div></div>
   <div class="r"><div class="px">${p?f2(p):'--'}</div><div class="meta">${chg(s)}${s.man>0?'手動':(db.px[s.code]?.rt?'最新':'收盤')}<button onclick="setPx(${s.id})">改</button></div></div></div>
-  <div class="meta lim">賣出限價 ${s.sell>0?f2(s.sell):'未設'} · 停損 ${s.stop>0?f2(s.stop):'未設'}<button onclick="setLim(${s.id})">設定</button></div>
+  <div class="meta lim">賣出限價 ${s.sell>0?f2(s.sell):'未設'} · 停損 ${s.stop>0?f2(s.stop):'未設'} · 低點 ${s.low>0?f2(s.low):'未設'}<button onclick="setLim(${s.id})">設定</button></div>
   <div class="stats"><div><span>股數</span><b>${fmt(c.qty)}</b></div><div><span>均價</span><b>${c.qty?f2(c.cost/c.qty):'-'}</b></div><div><span>成本</span><b>${fmt(c.cost)}</b></div>
   <div><span>市值</span><b>${c.has?fmt(c.mv):'-'}</b></div><div><span>損益</span><b class="${cl(c.pl)}">${c.has?sg(c.pl):'-'}</b></div><div><span>報酬</span><b class="${cl(c.pl)}">${c.has?sp(c.pct):'-'}</b></div></div>
   ${L.map(l=>`<div class="lot"><span class="mu">${esc(l.date)}</span><span class="mu">${esc(lb(l))}</span><span>${f2(l.price)}</span><span class="r">${fmt(l.qty)} 股</span><button onclick="delLot(${s.id},${l.id})">×</button></div>`).join('')}
@@ -112,7 +120,7 @@ function hold(u){
   <button onclick="delStock(${s.id})" style="float:right;margin-top:-26px">刪除股票</button></div>`}).join('');
  const sub=n?`<div class="sub">共 ${n} 檔 · 成本 ${fmt(tc)} · 損益 <span class="${cl(tp)}">${pc?sg(tp)+'（'+sp(tp/pc*100)+'）':'-'}</span></div>`:'';
  return sub+(cards||'<div class="empty">還沒有記錄</div>')+(showAdd?`<div class="card"><form onsubmit="return addStock(event)" style="margin:0">
-  <input name="code" placeholder="股票號碼" inputmode="numeric" required><input name="name" placeholder="公司" required>
+  <input name="code" placeholder="股票代號（如 00403A）" autocapitalize="characters" autocomplete="off" required><input name="name" placeholder="公司" required>
   <input name="year" placeholder="年度 115" inputmode="numeric" required><select name="div"><option>年配</option><option>半年配</option><option>季配</option><option>月配</option><option>不配息</option></select>
   ${lotForm()}<button class="btn">新增</button><button type="button" onclick="showAdd=false;render()">取消</button></form></div>`
   :`<button class="ghost" onclick="showAdd=true;render()">+ 新增股票</button>`);
@@ -136,14 +144,15 @@ function ana(u){
 function addLot(e,id){e.preventDefault();const f=new FormData(e.target);lastBr=f.get('br').trim();
  U().stocks.find(s=>s.id===id).lots.push({id:uid(),date:f.get('date'),price:+f.get('price'),qty:+f.get('qty'),br:lastBr});openLot=null;save();render();return false}
 function addStock(e){e.preventDefault();const f=new FormData(e.target);lastBr=f.get('br').trim();
- U().stocks.push({id:uid(),code:f.get('code').trim(),name:f.get('name'),year:f.get('year'),div:f.get('div'),sell:0,stop:0,man:0,
+ U().stocks.push({id:uid(),code:f.get('code').trim().toUpperCase(),name:f.get('name'),year:f.get('year'),div:f.get('div'),sell:0,stop:0,low:0,man:0,
  lots:[{id:uid(),date:f.get('date'),price:+f.get('price'),qty:+f.get('qty'),br:lastBr}]});showAdd=false;save();render();refresh();return false}
 const gs=id=>U().stocks.find(s=>s.id===id);
 function delLot(sid,lid){if(!confirm('刪除這筆買進？'))return;const s=gs(sid);s.lots=s.lots.filter(l=>l.id!==lid);save();render()}
 function delStock(id){if(!confirm('刪除這檔股票與全部記錄？'))return;U().stocks=U().stocks.filter(s=>s.id!==id);save();render()}
 function setPx(id){const s=gs(id),v=prompt('輸入現價（0 = 改回自動收盤價）',s.man||price(s));if(v===null)return;s.man=+v||0;save();render()}
-function setLim(id){const s=gs(id);let a=prompt('賣出限價（到價提醒，0 = 不設）',s.sell||0);if(a===null)return;
- let b=prompt('停損價（跌破提醒，0 = 不設）',s.stop||0);if(b===null)return;s.sell=+a||0;s.stop=+b||0;save();render()}
+function setLim(id){const s=gs(id),q=(t,v)=>prompt(t+'（0 = 不設）',v||0);
+ const a=q('賣出限價（漲到提醒）',s.sell);if(a===null)return;const b=q('停損價（跌破提醒）',s.stop);if(b===null)return;
+ const c=q('低點提醒價（跌到提醒，可作加碼參考）',s.low);if(c===null)return;s.sell=+a||0;s.stop=+b||0;s.low=+c||0;save();render()}
 function addU(){const n=prompt('新使用者名稱');if(!n)return;const id=uid();db.users.push({id,name:n,stocks:[]});db.cur=id;bf='';save();render()}
 function renU(){const n=prompt('改名',U().name);if(!n)return;U().name=n;save();render()}
 function delU(){if(db.users.length<2)return alert('至少要保留一位使用者');if(!confirm('刪除「'+U().name+'」與其全部記錄？'))return;
