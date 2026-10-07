@@ -53,6 +53,7 @@ input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid 
 <div class="bar"><select id="u" onchange="db.cur=+this.value;bf='';save();render()"></select>
 <button onclick="addU()">＋</button><button onclick="renU()">改名</button><button onclick="delU()">刪除</button></div>
 <div id="chips"></div>
+<input id="q" type="search" placeholder="搜尋持股：代號或名稱（如 0050、元大台灣50）" autocomplete="off" oninput="q=this.value;render()" style="width:100%;margin-bottom:10px">
 <div class="tabs"><button id="t0" onclick="tab=0;render()">持股</button><button id="t1" onclick="tab=1;render()">分析</button>
 <button onclick="setProxy()" style="margin-left:auto">⚙</button><button onclick="askNote()">🔔</button><button onclick="refresh()">↻ 股價</button></div>
 <div class="meta" id="st" style="margin:-4px 0 10px"></div>
@@ -67,13 +68,13 @@ const seed=()=>({cur:1,fee:{on:0,d:6},px:{},at:0,users:[{id:1,name:'我',stocks:
 const fixS=a=>a.map(x=>({sell:0,stop:0,low:0,man:0,...x,lots:x.lots.map(l=>({br:'',...l}))}));
 function load(){try{let s=localStorage.getItem(K);if(s)return JSON.parse(s);s=localStorage.getItem('stocklog.v1');
  if(s){const o=seed();o.users[0].stocks=fixS(JSON.parse(s));return o}}catch(e){}return seed()}
-let db=load(),tab=0,bf='',BSL=[],openLot=null,showAdd=false,lastBr='';
+let q='',db=load(),tab=0,bf='',BSL=[],openLot=null,showAdd=false,lastBr='';
 const $=id=>document.getElementById(id),U=()=>db.users.find(u=>u.id===db.cur)||db.users[0];
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Math.round(n).toLocaleString('en-US'),f2=n=>(Math.round(n*100)/100).toLocaleString('en-US');
 const sg=n=>(n>0?'+':'')+fmt(n),sp=n=>(n>0?'+':'')+n.toFixed(2)+'%',cl=n=>n>0?'up':n<0?'dn':'';
-const uid=()=>Date.now()+Math.floor(Math.random()*1e3),lb=l=>l.br||'未指定',fl=s=>bf?s.lots.filter(l=>lb(l)===bf):s.lots;
+const uid=()=>Date.now()+Math.floor(Math.random()*1e3),match=s=>{const k=q.trim().toLowerCase();return !k||(s.code+s.name).toLowerCase().includes(k)},lb=l=>l.br||'未指定',fl=s=>bf?s.lots.filter(l=>lb(l)===bf):s.lots;
 const chg=s=>{const x=db.px[s.code];if(!x||!x.y||s.man>0)return'';const d=price(s)-x.y;return `<div class="meta ${cl(d)}">${d>0?'+':''}${f2(d)} (${sp(d/x.y*100)})</div>`};
 const price=s=>s.man>0?s.man:(db.px[s.code]?.p||0);
 function calc(L,code,p){const qty=L.reduce((a,l)=>a+l.qty,0),cost=L.reduce((a,l)=>a+l.qty*l.price,0),mv=qty*p;let pl=mv-cost;
@@ -109,7 +110,7 @@ function render(){
 }
 function hold(u){
  let tc=0,tp=0,n=0,pc=0;
- const cards=u.stocks.map(s=>{const L=fl(s);if(!L.length)return'';n++;const p=price(s),c=calc(L,s.code,p);tc+=c.cost;if(c.has){tp+=c.pl;pc+=c.cost}
+ const cards=u.stocks.map(s=>{const L=fl(s);if(!L.length||!match(s))return'';n++;const p=price(s),c=calc(L,s.code,p);tc+=c.cost;if(c.has){tp+=c.pl;pc+=c.cost}
   return `<div class="card"><div class="top"><div><div class="name">${esc(s.code)} ${esc(s.name)}</div><div class="meta">${esc(s.year)} 年 · ${esc(s.div)}</div></div>
   <div class="r"><div class="px">${p?f2(p):'--'}</div><div class="meta">${chg(s)}${s.man>0?'手動':(db.px[s.code]?.rt?'最新':'收盤')}<button onclick="setPx(${s.id})">改</button></div></div></div>
   <div class="meta lim">賣出限價 ${s.sell>0?f2(s.sell):'未設'} · 停損 ${s.stop>0?f2(s.stop):'未設'} · 低點 ${s.low>0?f2(s.low):'未設'}<button onclick="setLim(${s.id})">設定</button></div>
@@ -119,7 +120,7 @@ function hold(u){
   ${openLot===s.id?`<form onsubmit="return addLot(event,${s.id})">${lotForm()}<button class="btn">加入</button></form>`:`<button onclick="openLot=${s.id};render()" style="margin-top:6px">+ 新增買進</button>`}
   <button onclick="delStock(${s.id})" style="float:right;margin-top:-26px">刪除股票</button></div>`}).join('');
  const sub=n?`<div class="sub">共 ${n} 檔 · 成本 ${fmt(tc)} · 損益 <span class="${cl(tp)}">${pc?sg(tp)+'（'+sp(tp/pc*100)+'）':'-'}</span></div>`:'';
- return sub+(cards||'<div class="empty">還沒有記錄</div>')+(showAdd?`<div class="card"><form onsubmit="return addStock(event)" style="margin:0">
+ return sub+(cards||`<div class="empty">${q.trim()?'找不到符合的持股':'還沒有記錄'}</div>`)+(showAdd?`<div class="card"><form onsubmit="return addStock(event)" style="margin:0">
   <input name="code" placeholder="股票代號（如 00403A）" autocapitalize="characters" autocomplete="off" required><input name="name" placeholder="公司" required>
   <input name="year" placeholder="年度 115" inputmode="numeric" required><select name="div"><option>年配</option><option>半年配</option><option>季配</option><option>月配</option><option>不配息</option></select>
   ${lotForm()}<button class="btn">新增</button><button type="button" onclick="showAdd=false;render()">取消</button></form></div>`
@@ -127,7 +128,7 @@ function hold(u){
 }
 function ana(u){
  const T={cost:0,mv:0,pl:0,pc:0},byB={},rows=[];
- u.stocks.forEach(s=>{const L=fl(s);if(!L.length)return;const p=price(s),c=calc(L,s.code,p);add(T,c);rows.push([s.name,c]);
+ u.stocks.forEach(s=>{const L=fl(s);if(!L.length||!match(s))return;const p=price(s),c=calc(L,s.code,p);add(T,c);rows.push([s.name,c]);
   const g={};L.forEach(l=>(g[lb(l)]=g[lb(l)]||[]).push(l));
   for(const b in g){byB[b]=byB[b]||{cost:0,mv:0,pl:0,pc:0};add(byB[b],calc(g[b],s.code,p))}});
  const row=(n,x)=>`<div class="row"><span>${esc(n)}</span><span class="r">${fmt(x.cost)}</span><span class="r">${x.mv?fmt(x.mv):'-'}</span><span class="r ${cl(x.pl)}">${x.pc?sg(x.pl)+'<small>'+sp(x.pl/x.pc*100)+'</small>':'-'}</span></div>`;
