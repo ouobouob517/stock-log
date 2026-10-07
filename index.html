@@ -46,6 +46,7 @@ form{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:10px;padding:8px 10px;min-width:0;flex:1 1 90px}
 .bar select{border:none}
 .foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:8px;border-top:1px solid var(--ln)}
+.fs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;align-items:center;margin-top:6px;font-size:14px}.fs input{width:100%;flex:none;padding:6px 8px}
 .empty{color:var(--mu);text-align:center;padding:30px 0}
 </style>
 </head>
@@ -78,10 +79,14 @@ const sg=n=>(n>0?'+':'')+fmt(n),sp=n=>(n>0?'+':'')+n.toFixed(2)+'%',cl=n=>n>0?'u
 const uid=()=>Date.now()+Math.floor(Math.random()*1e3),match=s=>{const k=q.trim().toLowerCase();return !k||(s.code+s.name).toLowerCase().includes(k)},lb=l=>l.br||'未指定',fl=s=>bf?s.lots.filter(l=>lb(l)===bf):s.lots;
 const chg=s=>{const x=db.px[s.code];if(!x||!x.y||s.man>0)return'';const d=price(s)-x.y;return `<div class="meta ${cl(d)}">${d>0?'+':''}${f2(d)} (${sp(d/x.y*100)})</div>`};
 const price=s=>s.man>0?s.man:(db.px[s.code]?.p||0);
-function calc(L,code,p){const qty=L.reduce((a,l)=>a+l.qty,0),cost=L.reduce((a,l)=>a+l.qty*l.price,0),mv=qty*p;let pl=mv-cost;
- if(db.fee.on){const r=.001425*db.fee.d/10,t=code.startsWith('00')?.001:.003;pl=mv*(1-r-t)-cost*(1+r)}
- return{qty,cost,mv,pl,pct:cost?pl/cost*100:0,has:p>0}}
-const add=(T,c)=>{T.cost+=c.cost;if(c.has){T.mv+=c.mv;T.pl+=c.pl;T.pc+=c.cost}};
+const fx=b=>{const o=(db.brk||{})[b]||{};return{d:o.d??db.fee.d,m:o.m??20,mo:o.mo??1}};
+function calc(L,code,p){const qty=L.reduce((a,l)=>a+l.qty,0),cost=L.reduce((a,l)=>a+l.qty*l.price,0),mv=qty*p;let pl=mv-cost,bc=0;
+ if(db.fee.on&&p>0){const t=code.startsWith('00')?.001:.003,g={};
+  L.forEach(l=>{const b=lb(l),f=fx(b),o=g[b]=g[b]||{q:0,f};o.q+=l.qty;bc+=Math.max(Math.floor(l.price*l.qty*.001425*f.d/10),l.qty<1000?f.mo:f.m)});
+  let sf=0;for(const b in g){const o=g[b],sv=o.q*p;sf+=Math.max(Math.floor(sv*.001425*o.f.d/10),o.q<1000?o.f.mo:o.f.m)+Math.floor(sv*t)}
+  pl=mv-cost-bc-sf}
+ const base=cost+bc;return{qty,cost,bc,mv,pl,pct:base?pl/base*100:0,has:p>0}}
+const add=(T,c)=>{T.cost+=c.cost;if(c.has){T.mv+=c.mv;T.pl+=c.pl;T.pc+=c.cost+c.bc}};
 const lotForm=(sid,extra)=>`<input name="date" placeholder="日期 0828" inputmode="numeric" maxlength="4" required>
 <input name="price" placeholder="價格" inputmode="decimal" required><input name="qty" placeholder="股數" inputmode="numeric" required>
 <input name="br" list="bl" placeholder="券商" value="${esc(lastBr)}">`;
@@ -111,7 +116,7 @@ function render(){
 }
 function hold(u){
  let tc=0,tp=0,n=0,pc=0;
- const cards=u.stocks.map(s=>{const L=fl(s);if(!L.length||!match(s))return'';n++;const p=price(s),c=calc(L,s.code,p);tc+=c.cost;if(c.has){tp+=c.pl;pc+=c.cost}
+ const cards=u.stocks.map(s=>{const L=fl(s);if(!L.length||!match(s))return'';n++;const p=price(s),c=calc(L,s.code,p);tc+=c.cost;if(c.has){tp+=c.pl;pc+=c.cost+c.bc}
   return `<div class="card"><div class="top"><div><div class="name">${esc(s.code)} ${esc(s.name)}</div><div class="meta">${esc(s.year)} 年 · ${esc(s.div)}</div></div>
   <div class="r"><div class="px">${p?f2(p):'--'}</div><div class="meta">${chg(s)}${s.man>0?'手動':(db.px[s.code]?.rt?'最新':'收盤')}<button onclick="setPx(${s.id})">改</button></div></div></div>
   <div class="meta lim">賣出限價 ${s.sell>0?f2(s.sell):'未設'} · 停損 ${s.stop>0?f2(s.stop):'未設'} · 低點 ${s.low>0?f2(s.low):'未設'}<button onclick="setLim(${s.id})">設定</button></div>
@@ -129,7 +134,7 @@ function hold(u){
 }
 function ana(u){
  const T={cost:0,mv:0,pl:0,pc:0},byB={},rows=[];
- u.stocks.forEach(s=>{const L=fl(s);if(!L.length||!match(s))return;const p=price(s),c=calc(L,s.code,p);add(T,c);rows.push([s.name,{...c,pc:c.has?c.cost:0,pl:c.has?c.pl:0}]);
+ u.stocks.forEach(s=>{const L=fl(s);if(!L.length||!match(s))return;const p=price(s),c=calc(L,s.code,p);add(T,c);rows.push([s.name,{...c,pc:c.has?c.cost+c.bc:0,pl:c.has?c.pl:0}]);
   const g={};L.forEach(l=>(g[lb(l)]=g[lb(l)]||[]).push(l));
   for(const b in g){byB[b]=byB[b]||{cost:0,mv:0,pl:0,pc:0};add(byB[b],calc(g[b],s.code,p))}});
  const row=(n,x)=>`<div class="row"><span>${esc(n)}</span><span class="r">${fmt(x.cost)}</span><span class="r">${x.mv?fmt(x.mv):'-'}</span><span class="r ${cl(x.pl)}">${x.pc?sg(x.pl)+'<small>'+sp(x.pl/x.pc*100)+'</small>':'-'}</span></div>`;
@@ -139,9 +144,15 @@ function ana(u){
   <div class="stats" style="grid-template-columns:1fr 1fr;border-bottom:none;margin-bottom:0"><div><span>總成本</span><b>${fmt(T.cost)}</b></div><div><span>總市值</span><b>${T.mv?fmt(T.mv):'-'}</b></div></div></div>
   <h3>依股票</h3>${hd}${rows.map(r=>row(r[0],r[1])).join('')||'<div class="empty">無資料</div>'}
   <h3>依券商</h3>${hd}${Object.keys(byB).map(b=>row(b,byB[b])).join('')}
-  <h3>設定</h3><form style="align-items:center"><label style="flex:1 1 100%;font-size:14px"><input type="checkbox" style="flex:none" ${db.fee.on?'checked':''} onchange="db.fee.on=this.checked?1:0;save();render()"> 扣除預估手續費＋證交稅（買賣各 0.1425%；賣出稅 0.3%，ETF 0.1%）</label>
-  <span class="meta">手續費</span><input type="number" step="0.1" min="0.1" max="10" value="${db.fee.d}" style="flex:0 0 80px" onchange="db.fee.d=+this.value||10;save();render()"><span class="meta">折</span></form>
-  <div class="sub">股價：設定 ⚙ 中繼站後盤中自動更新，否則為最近收盤價；未含最低手續費 20 元與股利。</div>`;
+  <h3>手續費設定</h3><label style="font-size:14px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" style="flex:none;width:auto" ${db.fee.on?'checked':''} onchange="db.fee.on=this.checked?1:0;save();render()"><span>損益改用「扣除手續費與證交稅」的預估值（依下方各券商設定計算）</span></label>
+  <div class="fs meta" style="margin-top:10px"><span>券商</span><span>折數</span><span>整股低消</span><span>零股低消</span></div>
+  <div class="fs"><span>預設</span><input type="number" step="0.1" min="0.1" max="10" value="${db.fee.d}" onchange="db.fee.d=+this.value||10;save();render()"><span class="meta">未單獨設定者</span><span></span></div>
+  ${BSL.slice(1).map((b,i)=>{const o=(db.brk||{})[b]||{};return `<div class="fs"><span>${esc(b)}</span>
+   <input type="number" step="0.1" placeholder="${db.fee.d}" value="${o.d??''}" onchange="setB(${i},'d',this.value)">
+   <input type="number" placeholder="20" value="${o.m??''}" onchange="setB(${i},'m',this.value)">
+   <input type="number" placeholder="1" value="${o.mo??''}" onchange="setB(${i},'mo',this.value)"></div>`}).join('')}
+  <div class="sub">折數填 6 = 六折；留空 = 用預設。賣出證交稅：股票 0.3%、ETF（00 開頭）0.1%。手續費與稅金逐筆無條件捨去，並套用最低手續費（整股 1,000 股以上用整股低消，不足用零股低消）。</div>
+  <div class="sub">股價：設定 ⚙ 中繼站後盤中自動更新，否則為最近收盤價；不含股利。</div>`;
 }
 function addLot(e,id){e.preventDefault();const f=new FormData(e.target);lastBr=f.get('br').trim();
  U().stocks.find(s=>s.id===id).lots.push({id:uid(),date:f.get('date'),price:+f.get('price'),qty:+f.get('qty'),br:lastBr});openLot=null;save();render();return false}
@@ -175,6 +186,7 @@ async function refresh(){
  if(res.some(r=>r.includes('✗'))||miss.length)$('st').textContent=res.join(' · ')+(miss.length?' · 查無股價：'+miss.join('、'):'')+'；可點「改」手動輸入'}
 const mkt=()=>{const t=new Date(Date.now()+(new Date().getTimezoneOffset()+480)*6e4),m=t.getHours()*60+t.getMinutes(),d=t.getDay();return d>0&&d<6&&m>=540&&m<=810};
 const stale=()=>Date.now()-db.at>(db.proxy&&mkt()?55e3:18e5);
+function setB(i,k,v){const b=BSL[i+1];db.brk=db.brk||{};const o=db.brk[b]=db.brk[b]||{},n=parseFloat(v);if(v===''||isNaN(n))delete o[k];else o[k]=n;save();render()}
 function setProxy(){const v=prompt('價格中繼站網址（Cloudflare Worker；留空 = 不使用）',db.proxy||'');if(v===null)return;db.proxy=v.trim();save();refresh()}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&stale())refresh()});setInterval(()=>{if(stale())refresh()},6e4);
 async function doExport(){const t=JSON.stringify(db);try{await navigator.clipboard.writeText(t);alert('已複製備份文字，可貼到備忘錄保存')}catch(e){prompt('請全選複製：',t)}}
