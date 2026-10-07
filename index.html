@@ -45,6 +45,7 @@ button:hover{color:var(--tx)}
 form{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:10px;padding:8px 10px;min-width:0;flex:1 1 90px}
 .bar select{border:none}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:8px;border-top:1px solid var(--ln)}
 .empty{color:var(--mu);text-align:center;padding:30px 0}
 </style>
 </head>
@@ -117,8 +118,8 @@ function hold(u){
   <div class="stats"><div><span>股數</span><b>${fmt(c.qty)}</b></div><div><span>均價</span><b>${c.qty?f2(c.cost/c.qty):'-'}</b></div><div><span>成本</span><b>${fmt(c.cost)}</b></div>
   <div><span>市值</span><b>${c.has?fmt(c.mv):'-'}</b></div><div><span>損益</span><b class="${cl(c.pl)}">${c.has?sg(c.pl):'-'}</b></div><div><span>報酬</span><b class="${cl(c.pl)}">${c.has?sp(c.pct):'-'}</b></div></div>
   ${L.map(l=>`<div class="lot"><span class="mu">${esc(l.date)}</span><span class="mu">${esc(lb(l))}</span><span>${f2(l.price)}</span><span class="r">${fmt(l.qty)} 股</span><button onclick="delLot(${s.id},${l.id})">×</button></div>`).join('')}
-  ${openLot===s.id?`<form onsubmit="return addLot(event,${s.id})">${lotForm()}<button class="btn">加入</button></form>`:`<button onclick="openLot=${s.id};render()" style="margin-top:6px">+ 新增買進</button>`}
-  <button onclick="delStock(${s.id})" style="float:right;margin-top:-26px">刪除股票</button></div>`}).join('');
+  ${openLot===s.id?`<form onsubmit="return addLot(event,${s.id})">${lotForm()}<button class="btn">加入</button></form>`:''}
+  <div class="foot">${openLot===s.id?'<span></span>':`<button onclick="openLot=${s.id};render()">+ 新增買進</button>`}<button onclick="delStock(${s.id})">刪除股票</button></div></div>`}).join('');
  const sub=n?`<div class="sub">共 ${n} 檔 · 成本 ${fmt(tc)} · 損益 <span class="${cl(tp)}">${pc?sg(tp)+'（'+sp(tp/pc*100)+'）':'-'}</span></div>`:'';
  return sub+(cards||`<div class="empty">${q.trim()?'找不到符合的持股':'還沒有記錄'}</div>`)+(showAdd?`<div class="card"><form onsubmit="return addStock(event)" style="margin:0">
   <input name="code" placeholder="股票代號（如 00403A）" autocapitalize="characters" autocomplete="off" required><input name="name" placeholder="公司" required>
