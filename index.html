@@ -56,9 +56,11 @@ input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid 
 <button onclick="addU()">＋</button><button onclick="renU()">改名</button><button onclick="delU()">刪除</button></div>
 <div id="chips"></div>
 <input id="q" type="search" placeholder="搜尋持股：代號或名稱（如 0050、元大台灣50）" autocomplete="off" oninput="q=this.value;render()" style="width:100%;margin-bottom:10px">
-<div class="tabs"><button id="t0" onclick="tab=0;render()">持股</button><button id="t1" onclick="tab=1;render()">分析</button>
+<div class="tabs"><button id="t0" onclick="tab=0;render()">持股</button><button id="t1" onclick="tab=1;render()">分析</button><button id="t2" onclick="tab=2;render()">追蹤</button>
 <button onclick="setProxy()" style="margin-left:auto">⚙</button><button onclick="askNote()">🔔</button><button onclick="refresh()">↻ 股價</button></div>
 <div class="meta" id="st" style="margin:-4px 0 10px"></div>
+<div id="wbox" class="card" style="display:none"><input id="wq" placeholder="搜尋還沒買的股票：代號或名稱（如 2330、台積電）" oninput="wSearch(this.value)" autocomplete="off" style="width:100%"><div id="wres"></div>
+<div class="meta" style="margin-top:8px">找不到時：<button onclick="addWM()">手動輸入代號加入</button></div></div>
 <div id="alerts"></div><div id="view"></div>
 <datalist id="bl"></datalist>
 <div style="text-align:center;margin-top:26px;font-size:13px">
@@ -70,7 +72,7 @@ const seed=()=>({cur:1,fee:{on:0,d:6},px:{},at:0,users:[{id:1,name:'我',stocks:
 const fixS=a=>a.map(x=>({sell:0,stop:0,low:0,man:0,...x,lots:x.lots.map(l=>({br:'',...l}))}));
 function load(){try{let s=localStorage.getItem(K);if(s)return JSON.parse(s);s=localStorage.getItem('stocklog.v1');
  if(s){const o=seed();o.users[0].stocks=fixS(JSON.parse(s));return o}}catch(e){}return seed()}
-let q='',db=load(),tab=0,bf='',BSL=[],openLot=null,showAdd=false,lastBr='';
+let q='',WR=[],wt,db=load(),tab=0,bf='',BSL=[],openLot=null,showAdd=false,lastBr='';
 const $=id=>document.getElementById(id),U=()=>db.users.find(u=>u.id===db.cur)||db.users[0];
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -94,7 +96,8 @@ const lotForm=(sid,extra)=>`<input name="date" placeholder="日期 0828" inputmo
 function alerts(u){const r=[];u.stocks.forEach(s=>{const p=price(s);if(!p)return;const k=t=>s.id+':'+t;
  if(s.sell>0&&p>=s.sell)r.push([k('s'+s.sell),`🔔 ${esc(s.name)} 現價 ${f2(p)} 已達賣出限價 ${f2(s.sell)}`]);
  if(s.stop>0&&p<=s.stop)r.push([k('x'+s.stop),`⚠️ ${esc(s.name)} 現價 ${f2(p)} 已跌破停損價 ${f2(s.stop)}`]);
- if(s.low>0&&p<=s.low)r.push([k('l'+s.low),`📉 ${esc(s.name)} 現價 ${f2(p)} 已跌到低點提醒價 ${f2(s.low)}`])});return r}
+ if(s.low>0&&p<=s.low)r.push([k('l'+s.low),`📉 ${esc(s.name)} 現價 ${f2(p)} 已跌到低點提醒價 ${f2(s.low)}`])});
+ (u.watch||[]).forEach(w=>{const p=price(w);if(p&&w.low>0&&p<=w.low)r.push(['w'+w.id+':'+w.low,`👀 追蹤：${esc(w.name)} 現價 ${f2(p)} 已跌到提醒價 ${f2(w.low)}`])});return r}
 function notify(list){if(!('Notification' in window)||Notification.permission!=='granted')return;db.nt=db.nt||{};const d=new Date().toDateString();let ch=0;
  list.forEach(([k,t])=>{if(db.nt[k]===d)return;db.nt[k]=d;ch=1;
   const o={body:t,icon:'./icon-192.png'};
@@ -105,14 +108,14 @@ function askNote(){if(!('Notification' in window))return alert('這個瀏覽器�
 function render(){
  const u=U();db.cur=u.id;
  $('u').innerHTML=db.users.map(x=>`<option value="${x.id}"${x.id===u.id?' selected':''}>${esc(x.name)}</option>`).join('');
- $('t0').className=tab?'':'on';$('t1').className=tab?'on':'';
+ $('t0').className=tab==0?'on':'';$('t1').className=tab==1?'on':'';$('t2').className=tab==2?'on':'';$('wbox').style.display=tab==2?'':'none';$('chips').style.display=$('q').style.display=tab==2?'none':'';
  const bs=[...new Set(u.stocks.flatMap(s=>s.lots.map(lb)))];
  if(bf&&!bs.includes(bf))bf='';BSL=['',...bs];
  $('chips').innerHTML=`<select onchange="bf=BSL[this.value];render()">${BSL.map((b,i)=>`<option value="${i}"${b===bf?' selected':''}>${b?esc(b):'所有券商'}</option>`).join('')}</select>`;
  $('bl').innerHTML=[...new Set([...BR,...bs.filter(x=>x!=='未指定')])].map(b=>`<option value="${esc(b)}">`).join('');
  $('st').textContent=db.at?'股價更新 '+new Date(db.at).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（'+(db.live?'最新':'最近收盤價')+'）':'尚未更新股價';
  $('alerts').innerHTML=alerts(u).map(a=>`<div class="al">${a[1]}</div>`).join('');notify(db.users.flatMap(alerts));
- $('view').innerHTML=tab?ana(u):hold(u);
+ $('view').innerHTML=tab==2?watchView(u):tab?ana(u):hold(u);
 }
 function hold(u){
  let tc=0,tp=0,n=0,pc=0;
@@ -171,7 +174,7 @@ function renU(){const n=prompt('改名',U().name);if(!n)return;U().name=n;save()
 function delU(){if(db.users.length<2)return alert('至少要保留一位使用者');if(!confirm('刪除「'+U().name+'」與其全部記錄？'))return;
  db.users=db.users.filter(x=>x.id!==db.cur);db.cur=db.users[0].id;bf='';save();render()}
 async function refresh(){
- const codes=new Set(db.users.flatMap(u=>u.stocks.map(s=>s.code)));$('st').textContent='更新中…';let ok=0;
+ const codes=new Set(db.users.flatMap(u=>[...u.stocks,...(u.watch||[])].map(s=>s.code)));$('st').textContent='更新中…';let ok=0;
  if(db.proxy){try{const j=await (await fetch(db.proxy+(db.proxy.includes('?')?'&':'?')+'codes='+[...codes].join(','),{cache:'no-store'})).json();
   let rt=0;for(const c in j){db.px[c]={p:j[c].p,y:j[c].y,rt:j[c].rt};if(j[c].rt)rt++}
   db.at=Date.now();db.live=rt>0;save();render();const ms=[...codes].filter(c=>!j[c]);
@@ -187,6 +190,24 @@ async function refresh(){
 const mkt=()=>{const t=new Date(Date.now()+(new Date().getTimezoneOffset()+480)*6e4),m=t.getHours()*60+t.getMinutes(),d=t.getDay();return d>0&&d<6&&m>=540&&m<=810};
 const stale=()=>Date.now()-db.at>(db.proxy&&mkt()?55e3:18e5);
 function setB(i,k,v){const b=BSL[i+1];db.brk=db.brk||{};const o=db.brk[b]=db.brk[b]||{},n=parseFloat(v);if(v===''||isNaN(n))delete o[k];else o[k]=n;save();render()}
+function watchView(u){u.watch=u.watch||[];
+ return u.watch.map(w=>{const p=price(w),d=p&&w.low>0?(p-w.low)/w.low*100:null;
+  return `<div class="card"><div class="top"><div><div class="name">${esc(w.code)} ${esc(w.name)}</div>
+  <div class="meta">${w.low>0?'跌到 '+f2(w.low)+' 提醒':'未設提醒價'}${d!==null?' · 距離 '+(d>0?'+':'')+d.toFixed(1)+'%':''}</div></div>
+  <div class="r"><div class="px">${p?f2(p):'--'}</div>${chg(w)}</div></div>
+  <div class="foot"><button onclick="setW(${w.id})">設定提醒價</button><button onclick="delW(${w.id})">取消追蹤</button></div></div>`}).join('')||'<div class="empty">還沒有追蹤的股票<br>用上方搜尋框加入</div>'}
+function wSearch(v){clearTimeout(wt);const r=$('wres');v=v.trim();if(!v){r.innerHTML='';return}
+ if(!db.proxy){r.innerHTML='<div class="meta" style="margin-top:8px">需先在 ⚙ 設定價格中繼站才能搜尋，或用下方手動輸入代號</div>';return}
+ r.innerHTML='<div class="meta" style="margin-top:8px">搜尋中…</div>';
+ wt=setTimeout(async()=>{try{const a=await (await fetch(db.proxy+(db.proxy.includes('?')?'&':'?')+'q='+encodeURIComponent(v))).json();WR=a;
+  r.innerHTML=a.length?a.map((x,i)=>`<div class="lot" style="grid-template-columns:72px 1fr auto"><span>${esc(x.code)}</span><span>${esc(x.name)}</span><button onclick="addW(${i})">＋ 追蹤</button></div>`).join(''):'<div class="meta" style="margin-top:8px">找不到符合的股票，可用下方手動輸入</div>'}
+  catch(e){r.innerHTML='<div class="meta" style="margin-top:8px">搜尋失敗，請確認 Worker 已更新為新版</div>'}},350)}
+function addW(i){const x=WR[i];if(x)addWatch(x.code,x.name)}
+function addWM(){const c=prompt('股票代號（如 2330、00403A）');if(!c)return;addWatch(c.trim().toUpperCase(),prompt('名稱（可留空）')||c.trim().toUpperCase())}
+function addWatch(code,name){const u=U();u.watch=u.watch||[];if(u.watch.some(w=>w.code===code))return alert('已在追蹤清單');
+ const w={id:uid(),code,name,low:0};u.watch.push(w);$('wq').value='';$('wres').innerHTML='';save();render();refresh();setW(w.id)}
+function setW(id){const w=U().watch.find(x=>x.id===id),v=prompt('跌到多少時提醒？（0 = 不設）',w.low||0);if(v===null)return;w.low=+v||0;save();render()}
+function delW(id){if(!confirm('取消追蹤？'))return;U().watch=U().watch.filter(x=>x.id!==id);save();render()}
 function setProxy(){const v=prompt('價格中繼站網址（Cloudflare Worker；留空 = 不使用）',db.proxy||'');if(v===null)return;db.proxy=v.trim();save();refresh()}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&stale())refresh()});setInterval(()=>{if(stale())refresh()},6e4);
 async function doExport(){const t=JSON.stringify(db);try{await navigator.clipboard.writeText(t);alert('已複製備份文字，可貼到備忘錄保存')}catch(e){prompt('請全選複製：',t)}}
