@@ -212,12 +212,12 @@ function buildCfg(){const a=[];db.users.forEach(u=>{u.stocks.forEach(s=>{if(s.se
  (u.watch||[]).forEach(w=>{if(w.low>0)a.push({k:u.id+':w'+w.id,u:u.name,code:w.code,name:w.name,low:w.low,w:1})})});return a}
 async function syncAlerts(force,test){if(!db.proxy||!db.key)return{ok:false,msg:'未設定'};
  const cfg=buildCfg(),body=JSON.stringify(cfg);if(!force&&body===lastSync)return{ok:true,n:cfg.length};
- try{const u=new URL(db.proxy);u.searchParams.set('sync','1');u.searchParams.set('key',db.key);if(test)u.searchParams.set('test','1');
+ try{const u=new URL(db.proxy);u.searchParams.set('sync','1');u.searchParams.set('key',db.key);if(db.chat)u.searchParams.set('chat',db.chat);if(test)u.searchParams.set('test','1');
   const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain'},body}),j=await r.json();
   if(!r.ok||!j.ok)return{ok:false,msg:j.error||r.status};lastSync=body;return{ok:true,n:cfg.length,tg:j.tg}}
  catch(e){return{ok:false,msg:e.message||String(e)}}}
 async function setProxy(){const v=prompt('價格中繼站網址（Cloudflare Worker；留空 = 不使用）',db.proxy||'');if(v===null)return;db.proxy=v.trim();
- if(db.proxy){const k=prompt('Telegram 推播密碼（與 Worker 的 KEY 相同；不用推播請留空）',db.key||'');if(k!==null)db.key=k.trim()}
+ if(db.proxy){const k=prompt('Telegram 推播密碼（與 Worker 的 KEY 相同；不用推播請留空）',db.key||'');if(k!==null)db.key=k.trim();if(db.key){const c=prompt('你自己的 Telegram chat id（家人各自填自己的；留空 = 用 Worker 預設值）',db.chat||'');if(c!==null)db.chat=c.trim()}}
  save();refresh();
  if(db.proxy&&db.key){const r=await syncAlerts(true,true);alert(r.ok?'已同步 '+r.n+' 筆提醒'+(r.tg==='ok'?'，Telegram 測試訊息已送出':'，但 Telegram 發送失敗：'+r.tg):'同步失敗：'+r.msg)}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&stale())refresh()});setInterval(()=>{if(stale())refresh()},6e4);
