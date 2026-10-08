@@ -72,9 +72,9 @@ const seed=()=>({cur:1,fee:{on:0,d:6},px:{},at:0,users:[{id:1,name:'我',stocks:
 const fixS=a=>a.map(x=>({sell:0,stop:0,low:0,man:0,...x,lots:x.lots.map(l=>({br:'',...l}))}));
 function load(){try{let s=localStorage.getItem(K);if(s)return JSON.parse(s);s=localStorage.getItem('stocklog.v1');
  if(s){const o=seed();o.users[0].stocks=fixS(JSON.parse(s));return o}}catch(e){}return seed()}
-let q='',WR=[],wt,db=load(),tab=0,bf='',BSL=[],openLot=null,showAdd=false,lastBr='';
+let q='',WR=[],wt,sy,lastSync='',db=load(),tab=0,bf='',BSL=[],openLot=null,showAdd=false,lastBr='';
 const $=id=>document.getElementById(id),U=()=>db.users.find(u=>u.id===db.cur)||db.users[0];
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}clearTimeout(sy);sy=setTimeout(()=>syncAlerts(),1500)};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Math.round(n).toLocaleString('en-US'),f2=n=>(Math.round(n*100)/100).toLocaleString('en-US');
 const sg=n=>(n>0?'+':'')+fmt(n),sp=n=>(n>0?'+':'')+n.toFixed(2)+'%',cl=n=>n>0?'up':n<0?'dn':'';
@@ -208,12 +208,23 @@ function addWatch(code,name){const u=U();u.watch=u.watch||[];if(u.watch.some(w=>
  const w={id:uid(),code,name,low:0};u.watch.push(w);$('wq').value='';$('wres').innerHTML='';save();render();refresh();setW(w.id)}
 function setW(id){const w=U().watch.find(x=>x.id===id),v=prompt('跌到多少時提醒？（0 = 不設）',w.low||0);if(v===null)return;w.low=+v||0;save();render()}
 function delW(id){if(!confirm('取消追蹤？'))return;U().watch=U().watch.filter(x=>x.id!==id);save();render()}
-function setProxy(){const v=prompt('價格中繼站網址（Cloudflare Worker；留空 = 不使用）',db.proxy||'');if(v===null)return;db.proxy=v.trim();save();refresh()}
+function buildCfg(){const a=[];db.users.forEach(u=>{u.stocks.forEach(s=>{if(s.sell>0||s.stop>0||s.low>0)a.push({k:u.id+':'+s.id,u:u.name,code:s.code,name:s.name,sell:s.sell,stop:s.stop,low:s.low})});
+ (u.watch||[]).forEach(w=>{if(w.low>0)a.push({k:u.id+':w'+w.id,u:u.name,code:w.code,name:w.name,low:w.low,w:1})})});return a}
+async function syncAlerts(force,test){if(!db.proxy||!db.key)return{ok:false,msg:'未設定'};
+ const cfg=buildCfg(),body=JSON.stringify(cfg);if(!force&&body===lastSync)return{ok:true,n:cfg.length};
+ try{const u=new URL(db.proxy);u.searchParams.set('sync','1');u.searchParams.set('key',db.key);if(test)u.searchParams.set('test','1');
+  const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain'},body}),j=await r.json();
+  if(!r.ok||!j.ok)return{ok:false,msg:j.error||r.status};lastSync=body;return{ok:true,n:cfg.length,tg:j.tg}}
+ catch(e){return{ok:false,msg:e.message||String(e)}}}
+async function setProxy(){const v=prompt('價格中繼站網址（Cloudflare Worker；留空 = 不使用）',db.proxy||'');if(v===null)return;db.proxy=v.trim();
+ if(db.proxy){const k=prompt('Telegram 推播密碼（與 Worker 的 KEY 相同；不用推播請留空）',db.key||'');if(k!==null)db.key=k.trim()}
+ save();refresh();
+ if(db.proxy&&db.key){const r=await syncAlerts(true,true);alert(r.ok?'已同步 '+r.n+' 筆提醒'+(r.tg==='ok'?'，Telegram 測試訊息已送出':'，但 Telegram 發送失敗：'+r.tg):'同步失敗：'+r.msg)}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&stale())refresh()});setInterval(()=>{if(stale())refresh()},6e4);
 async function doExport(){const t=JSON.stringify(db);try{await navigator.clipboard.writeText(t);alert('已複製備份文字，可貼到備忘錄保存')}catch(e){prompt('請全選複製：',t)}}
 function doImport(){const t=prompt('貼上備份文字（會覆蓋目前資料）：');if(!t)return;
  try{const d=JSON.parse(t);if(Array.isArray(d)){U().stocks=fixS(d)}else if(d.users){db=d}else throw 0;save();render()}catch(e){alert('格式不正確')}}
-render();if(stale())refresh();
+render();if(stale())refresh();syncAlerts();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
 </script>
 </body>
